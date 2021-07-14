@@ -1,0 +1,122 @@
+version: "3"
+
+networks:
+  internal_network:
+
+services:
+  nginx:
+    container_name: nginx
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    image: nginx:1.21.1
+    restart: always
+    ports:
+      - "443:443"
+    links:
+      - db
+      - wordpress
+    volumes: 
+      - wpdata:/var/www/html
+    networks:
+      internal_network:
+        aliases:
+          - nginx.docker.internal
+
+  varnish:
+    container_name: varnish
+    build:
+      context: ./varnish
+      dockerfile: Dockerfile
+    image: varnish:6.6.0
+    depends_on: 
+      - nginx
+    volumes: 
+      - wpdata:/var/www/html
+    ports:
+      - "80:80"
+    restart: always
+    networks:
+      internal_network:
+        aliases:
+          - varnish.docker.internal
+
+  redis:
+    container_name: redis
+    build:
+      context: ./redis
+      dockerfile: Dockerfile
+    image: redis:6.2.4
+    depends_on: 
+      - wordpress
+    volumes: 
+      - wpdata:/var/www/html
+    ports:
+      - "6379:6379"
+    restart: always
+    networks:
+      internal_network:
+        aliases:
+          - redis.docker.internal
+                  
+  db:
+    image: mysql:8.0
+    restart: always
+    container_name: db
+    ports: 
+      - "3306:3306"
+    command: '--default-authentication-plugin=mysql_native_password'
+    env_file: .docker/env/db.env
+    volumes:
+        - dbdata:/var/lib/mysql
+    networks:
+      internal_network:
+        aliases: 
+          - db.docker.internal 
+
+  wordpress:
+    container_name: wordpress
+    build:
+      context: ./wordpress
+      dockerfile: Dockerfile
+    image: wordpress:5.7.2
+    depends_on: 
+      - db
+    restart: always
+    volumes:
+      - wpdata:/var/www/html
+    env_file: .docker/env/wp.env
+    networks:
+      internal_network:
+        aliases: 
+          - wordpress.docker.internal
+
+# DEV ENV
+
+  phpmyadmin:
+    container_name: phpmyadmin
+    image: phpmyadmin/phpmyadmin
+    restart: always
+    depends_on: 
+      - db
+    ports:
+      - "8081:80"
+    env_file: .docker/env/pma.env
+    networks:
+      internal_network:
+        aliases: 
+          - phpmyadmin.docker.internal
+
+  dozzle:
+    container_name: dozzle
+    image: amir20/dozzle:latest
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - "9999:8080"
+
+volumes:
+  wpdata:
+    driver: local
+  dbdata:
+    driver: local
