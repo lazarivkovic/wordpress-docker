@@ -10,7 +10,7 @@ WordPress is a free, open-source website creation platform. On a more technical 
 
 ### Navigate to the docker folder 
 ```shell
-cd wordpress-docker/
+cd wordpress-docker-nginx/
 ```
 
 ### Setup docker Wordpress cluster
